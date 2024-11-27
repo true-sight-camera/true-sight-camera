@@ -103,14 +103,21 @@ def get_png_dimensions(file_path):
 
 
 if __name__ == "__main__":
+    ### Testing encoding and decoding
     # randomizing depth arr
-    png_file = "mario.png"
-    dest_file = "example_with_depth.png"
-    width, height = get_png_dimensions(png_file)
-    depth_array = np.random.randint(0, 256, (height, width), dtype=np.uint8)
+    # png_file = "mario.png"
+    # dest_file = "example_with_depth.png"
+    # width, height = get_png_dimensions(png_file)
+    # depth_array = np.random.randint(0, 256, (height, width), dtype=np.uint8)
 
-    # Add depth data as a custom chunk
-    add_depth_chunk_with_pixel_data(png_file, depth_array, dest_file)
+    # # Add depth data as a custom chunk
+    # add_depth_chunk_with_pixel_data(png_file, depth_array, dest_file)
 
-    depth_from_chunk = extract_depth_chunk(dest_file)
-    assert np.array_equal(np.array(depth_array), np.array(depth_from_chunk))
+    # depth_from_chunk = extract_depth_chunk(dest_file)
+    # assert np.array_equal(np.array(depth_array), np.array(depth_from_chunk))
+
+
+    ### testing if downloaded image from social media has same info
+    depth_data_discord = extract_depth_chunk("downloaded_from_discord.png")
+    local_depth_data = extract_depth_chunk("example_with_depth.png")
+    assert np.array_equal(np.array(depth_data_discord), np.array(local_depth_data))
