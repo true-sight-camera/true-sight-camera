@@ -31,7 +31,7 @@ def add_depth_chunk_with_pixel_data(png_file, depth_array, output_file):
     compressed_depth = zlib.compress(depth_bytes)         # Compress the depth data
     
     # Create a custom PNG chunk for depth data
-    chunk_type = b"IDEP"                                  # Custom chunk identifier
+    chunk_type = b"dEPh"                                  # Custom chunk identifier
     chunk_data = compressed_depth
     chunk_length = struct.pack(">I", len(chunk_data))     # Length of the chunk data
     chunk_crc = struct.pack(">I", zlib.crc32(chunk_type + chunk_data))  # CRC for validation
@@ -53,7 +53,7 @@ def add_depth_chunk_with_pixel_data(png_file, depth_array, output_file):
 
 
 
-def extract_depth_chunk(file_path, chunk_type=b"IDEP"):
+def extract_depth_chunk(file_path, chunk_type=b"dEPh"):
     """
     Extracts the custom depth data chunk from a PNG file.
     
@@ -104,7 +104,7 @@ def get_png_dimensions(file_path):
 
 if __name__ == "__main__":
     # randomizing depth arr
-    png_file = "camera_0.png"
+    png_file = "mario.png"
     dest_file = "example_with_depth.png"
     width, height = get_png_dimensions(png_file)
     depth_array = np.random.randint(0, 256, (height, width), dtype=np.uint8)
