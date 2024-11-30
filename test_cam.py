@@ -51,7 +51,10 @@ def list_camera_indexes():
 
 if __name__ == "__main__":
     # Attempt to capture images from two cameras
-    available_indexes = list_camera_indexes()
-    for index in available_indexes:
-        file_name = f"camera_{index}.png"
-        capture_picture(camera_index=index, save_path=file_name)
+    # available_indexes = list_camera_indexes()
+    # available_indexes = [0, 2]
+    # for index in available_indexes:
+    #     file_name = f"camera_{index}.png"
+    #     capture_picture(camera_index=index, save_path=file_name)
+    capture_picture(camera_index=0, save_path="left_cam.png")
+    capture_picture(camera_index=2, save_path="right_cam.png")
