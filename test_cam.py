@@ -56,5 +56,5 @@ if __name__ == "__main__":
     # for index in available_indexes:
     #     file_name = f"camera_{index}.png"
     #     capture_picture(camera_index=index, save_path=file_name)
-    capture_picture(camera_index=0, save_path="left_cam.png")
-    capture_picture(camera_index=2, save_path="right_cam.png")
+    capture_picture(camera_index=0, save_path="test_images/left_cam_1.png")
+    capture_picture(camera_index=2, save_path="test_images/right_cam_1.png")
