@@ -1,5 +1,7 @@
 import cv2
 import os
+from PIL import Image
+
 
 def capture_picture(camera_index=0, save_path="captured_image.jpg"):
     """
@@ -56,5 +58,18 @@ if __name__ == "__main__":
     # for index in available_indexes:
     #     file_name = f"camera_{index}.png"
     #     capture_picture(camera_index=index, save_path=file_name)
-    capture_picture(camera_index=0, save_path="test_images/left_cam_1.png")
-    capture_picture(camera_index=2, save_path="test_images/right_cam_1.png")
+    image_path = "test_images/stereo_vision.png"
+    capture_picture(camera_index=0, save_path=image_path)
+    image = Image.open(image_path)
+
+    width, height = image.size
+    split_point = width // 2
+
+    left_image = image.crop((0, 0, split_point, height))
+    right_image = image.crop((split_point, 0, width, height))
+
+    left_image_path = "test_images/left_image.png"
+    right_image_path = "test_images/right_image.png"
+    left_image.save(left_image_path)
+    right_image.save(right_image_path)
+    os.remove(image_path)
