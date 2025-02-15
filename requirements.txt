@@ -1,0 +1,4 @@
+ArducamDepthCamera
+opencv-python
+# cv2
+numpy

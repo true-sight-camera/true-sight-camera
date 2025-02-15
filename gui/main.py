@@ -2,14 +2,27 @@ import cv2
 from datetime import datetime
 import tkinter as tk
 from tkinter import Label
-import numpy as np
 
 import gui.image_processing as img_proc
+from gui.menu import OverlayMenu
 
 
 # GLOBAL VARIABLES #
 fullscreen = True  # Start in fullscreen mode
 current_frame = None  # Store the current frame
+
+# Initialize the main Tkinter window
+root = tk.Tk()
+root.title("Full Screen Tkinter Window")
+root.attributes("-fullscreen", fullscreen)
+
+# Create a label to display the video feed
+video_label = Label(root)
+video_label.pack(fill=tk.BOTH, expand=True)
+
+
+# FEATURES # 
+overlay_menu = OverlayMenu(root)
 
 
 def toggle_fullscreen(event=None):
@@ -63,17 +76,9 @@ def update_frame():
         video_label.imgtk = img  # Store a reference to avoid garbage collection
     
     # Schedule the next frame update
-    video_label.after(10, update_frame)
+    video_label.after(5, update_frame)
 
-
-# Initialize the main Tkinter window
-root = tk.Tk()
-root.title("Full Screen Tkinter Window")
-root.attributes("-fullscreen", fullscreen)
-
-# Create a label to display the video feed
-video_label = Label(root)
-video_label.pack(fill=tk.BOTH, expand=True)
+# BINDINGS #
 
 # Bind keys for toggling and exiting fullscreen mode
 root.bind("<F11>", toggle_fullscreen)
@@ -81,6 +86,12 @@ root.bind("<Escape>", exit_fullscreen)
 
 # Bind the "s" key to save the current frame
 root.bind("s", save_current_frame)
+
+# Bind the "m" key to toggle the menu
+root.bind("m", overlay_menu.toggle_menu)
+
+# Bind the "Enter" key to select the current menu option
+root.bind("<Return>", overlay_menu.select)
 
 # Initialize the OpenCV video capture
 cap = cv2.VideoCapture(0)  # Use 0 for the default webcam
