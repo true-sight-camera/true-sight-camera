@@ -3,8 +3,8 @@ import cv2 as cv
 from matplotlib import pyplot as plt
 
 # Load and preprocess the images
-left_image = cv.imread("left_cam.png", cv.IMREAD_GRAYSCALE)
-right_image = cv.imread("right_cam.png", cv.IMREAD_GRAYSCALE)
+left_image = cv.imread("test_images/left_cam_1.png", cv.IMREAD_GRAYSCALE)
+right_image = cv.imread("test_images/right_cam_1.png", cv.IMREAD_GRAYSCALE)
 
 # Align the left image (adjust based on observed misalignment)
 x_offset = 0
