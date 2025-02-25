@@ -3,11 +3,11 @@ import cv2 as cv
 from matplotlib import pyplot as plt
 
 # Load and preprocess the images
-left_image = cv.imread("left_image.png", cv.IMREAD_GRAYSCALE)
-right_image = cv.imread("right_image.png", cv.IMREAD_GRAYSCALE)
+left_image = cv.imread("test_images/left_image.png", cv.IMREAD_GRAYSCALE)
+right_image = cv.imread("test_images/right_image.png", cv.IMREAD_GRAYSCALE)
 
 # Align the left image (adjust based on observed misalignment)
-x_offset = 6.3
+x_offset = 0.06
 y_offset = 0
 rows, cols = right_image.shape
 translation_matrix = np.float32([[1, 0, x_offset], [0, 1, y_offset]])
