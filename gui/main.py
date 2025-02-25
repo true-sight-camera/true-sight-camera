@@ -2,6 +2,7 @@ import cv2
 from datetime import datetime
 import tkinter as tk
 from tkinter import Label
+import RPi.GPIO as GPIO
 
 import gui.image_processing as img_proc
 from gui.menu import OverlayMenu
@@ -34,8 +35,8 @@ def toggle_fullscreen(event=None):
 
 def exit_fullscreen(event=None):
     """Exit fullscreen mode and close the application."""
-    global cap
-    cap.release()  # Release the video capture
+    global default_cam_capture
+    default_cam_capture.release()  # Release the video capture
     root.destroy()
 
 
@@ -55,14 +56,14 @@ def save_current_frame(event=None):
 def update_frame():
     """Update the video frame in the Tkinter window."""
     global current_frame
-    ret, frame = cap.read()
+    ret, frame = default_cam_capture.read()
     if ret:
         current_frame = frame
 
         # Resize the frame to fit the Tkinter window
         screen_width = int(root.winfo_screenwidth())
         screen_height = int(root.winfo_screenheight())
-        resized_frame = cv2.resize(frame, (screen_width, screen_height), interpolation=cv2.INTER_AREA)
+        resized_frame = cv2.resize(frame, (screen_width, screen_height))
 
         # Preprocess the image in place
         processed_frame = img_proc.process_image(resized_frame)
@@ -93,11 +94,60 @@ root.bind("m", overlay_menu.toggle_menu)
 # Bind the "Enter" key to select the current menu option
 root.bind("<Return>", overlay_menu.select)
 
+
+# The 5 volt pin
+GPIO.setmode(GPIO.BCM)
+
+GPIO.setup(21, GPIO.OUT)
+GPIO.output(21, GPIO.HIGH)
+
+
+GPIO.setup(19, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+GPIO.setup(16, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+GPIO.setup(26, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+GPIO.setup(20, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+GPIO.setup(13, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+GPIO.setup(12, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+
+def click_left():
+    print("LEFT")
+    root.event_generate("<Left>")
+
+def click_right():
+    print("RIGHT")
+    root.event_generate("<Right>")
+
+def click_up():
+    print("UP")
+    root.event_generate("<Up>")
+
+def click_down():
+    print("DOWN")
+    root.event_generate("<Down>")
+
+def click_ok():
+    print("OK")
+    root.event_generate("<Return>")
+
+def click_picture():
+    print("PICTURE")
+    root.event_generate("s")
+
+GPIO.add_event_detect(19, GPIO.FALLING, callback=click_left, bouncetime=200)
+GPIO.add_event_detect(16, GPIO.FALLING, callback=click_right, bouncetime=200)
+GPIO.add_event_detect(26, GPIO.FALLING, callback=click_up, bouncetime=200)
+GPIO.add_event_detect(20, GPIO.FALLING, callback=click_down, bouncetime=200)
+GPIO.add_event_detect(13, GPIO.FALLING, callback=click_ok, bouncetime=200)
+GPIO.add_event_detect(12, GPIO.FALLING, callback=click_picture, bouncetime=200)
+
 # Initialize the OpenCV video capture
-cap = cv2.VideoCapture(0)  # Use 0 for the default webcam
+default_cam_capture = cv2.VideoCapture(0)  # Use 0 for the default webcam
 
 # Start updating the video feed
 update_frame()
 
 # Start the Tkinter event loop
-root.mainloop()
+try:
+    root.mainloop()
+except:
+    GPIO.cleanup()

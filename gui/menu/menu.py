@@ -1,7 +1,7 @@
 from enum import Enum
 import tkinter as tk
 
-from gui.gallery import Gallery
+from gui.gallery.gallery import Gallery
 
 class Dummy:
     def __init__(self):
@@ -61,6 +61,7 @@ class OverlayMenu:
 
 
     def select(self, event):
+        print("Selected", self.menu_items[self.current_index])
         self.menu_items[self.current_index].open(event)
 
     
