@@ -23,9 +23,9 @@ class OverlayMenu:
         # Menu
         self.current_index = 0
         self.max_menu_items = 4
-        gallery = Gallery(root)
+        # gallery = Gallery(root)
 
-        self.menu_items = [gallery, Dummy(), Dummy(), Dummy()]
+        self.menu_items = [Dummy(), Dummy(), Dummy()]
 
         # Initialization function
         self.create_menu()

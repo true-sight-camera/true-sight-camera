@@ -1,16 +1,21 @@
+import os
 import cv2
-from datetime import datetime
 import tkinter as tk
+from PIL import Image, ImageTk
+from datetime import datetime
 from tkinter import Label
 import RPi.GPIO as GPIO
 
 import gui.image_processing as img_proc
 from gui.menu import OverlayMenu
+from gui.gallery import Gallery
 
 
 # GLOBAL VARIABLES #
 fullscreen = True  # Start in fullscreen mode
 current_frame = None  # Store the current frame
+gallery_active = False  # Track if the gallery is active
+GALLERY_DIRECTORY = "./gallery"
 
 # Initialize the main Tkinter window
 root = tk.Tk()
@@ -20,7 +25,6 @@ root.attributes("-fullscreen", fullscreen)
 # Create a label to display the video feed
 video_label = Label(root)
 video_label.pack(fill=tk.BOTH, expand=True)
-
 
 # FEATURES # 
 overlay_menu = OverlayMenu(root)
@@ -56,6 +60,8 @@ def save_current_frame(event=None):
 def update_frame():
     """Update the video frame in the Tkinter window."""
     global current_frame
+    if gallery_active:  # Stop updating if gallery is active
+        return
     ret, frame = default_cam_capture.read()
     if ret:
         current_frame = frame
@@ -65,43 +71,45 @@ def update_frame():
         screen_height = int(root.winfo_screenheight())
         resized_frame = cv2.resize(frame, (screen_width, screen_height))
 
-        # Preprocess the image in place
+        # Preprocess the image
         processed_frame = img_proc.process_image(resized_frame)
         
-        # Convert the frame to a Tkinter PhotoImage object
+        # Convert to a Tkinter-compatible format
         img = tk.PhotoImage(master=root, width=screen_width, height=screen_height,
                             data=cv2.imencode('.ppm', processed_frame)[1].tobytes())
         
         # Update the label with the image
         video_label.config(image=img)
-        video_label.imgtk = img  # Store a reference to avoid garbage collection
+        video_label.imgtk = img  # Store reference to avoid garbage collection
     
     # Schedule the next frame update
     video_label.after(5, update_frame)
 
 # BINDINGS #
-
-# Bind keys for toggling and exiting fullscreen mode
 root.bind("<F11>", toggle_fullscreen)
 root.bind("<Escape>", exit_fullscreen)
-
-# Bind the "s" key to save the current frame
 root.bind("s", save_current_frame)
-
-# Bind the "m" key to toggle the menu
 root.bind("m", overlay_menu.toggle_menu)
-
-# Bind the "Enter" key to select the current menu option
 root.bind("<Return>", overlay_menu.select)
 
+# GALLERY INTEGRATION #
+gallery = Gallery(root, video_label, update_frame)
 
-# The 5 volt pin
+def toggle_gallery(event=None):
+    """Toggle between the video feed and the gallery."""
+    if gallery_active:
+        gallery.close()
+    else:
+        gallery.open()
+
+root.bind("g", toggle_gallery)  # Press "g" to switch to the gallery
+
+
+# GPIO SETUP #
 GPIO.setmode(GPIO.BCM)
 
 GPIO.setup(21, GPIO.OUT)
 GPIO.output(21, GPIO.HIGH)
-
-
 GPIO.setup(19, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 GPIO.setup(16, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 GPIO.setup(26, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
@@ -109,41 +117,21 @@ GPIO.setup(20, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 GPIO.setup(13, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 GPIO.setup(12, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
-def click_left():
-    print("LEFT")
-    root.event_generate("<Left>")
-
-def click_right():
-    print("RIGHT")
-    root.event_generate("<Right>")
-
-def click_up():
-    print("UP")
-    root.event_generate("<Up>")
-
-def click_down():
-    print("DOWN")
-    root.event_generate("<Down>")
-
-def click_ok():
-    print("OK")
-    root.event_generate("<Return>")
-
-def click_picture():
+def click_picture(channel):
     print("PICTURE")
     root.event_generate("s")
 
-GPIO.add_event_detect(19, GPIO.FALLING, callback=click_left, bouncetime=200)
-GPIO.add_event_detect(16, GPIO.FALLING, callback=click_right, bouncetime=200)
-GPIO.add_event_detect(26, GPIO.FALLING, callback=click_up, bouncetime=200)
-GPIO.add_event_detect(20, GPIO.FALLING, callback=click_down, bouncetime=200)
-GPIO.add_event_detect(13, GPIO.FALLING, callback=click_ok, bouncetime=200)
+def click_gallery(channel):
+    print("TOGGLE GALLERY")
+    root.event_generate("g")
+
 GPIO.add_event_detect(12, GPIO.FALLING, callback=click_picture, bouncetime=200)
+GPIO.add_event_detect(13, GPIO.FALLING, callback=click_gallery, bouncetime=200)
 
-# Initialize the OpenCV video capture
-default_cam_capture = cv2.VideoCapture(0)  # Use 0 for the default webcam
+# Initialize OpenCV video capture
+default_cam_capture = cv2.VideoCapture(0)
 
-# Start updating the video feed
+# Start video updates
 update_frame()
 
 # Start the Tkinter event loop
