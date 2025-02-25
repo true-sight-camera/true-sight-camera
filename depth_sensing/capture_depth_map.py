@@ -7,9 +7,9 @@ import zlib
 from PIL import Image
 
 image_path = "../test_images/stereo_vision.png"
-left_image_path = "../test_images/left_image_2.png"
-right_image_path = "../test_images/right_image_2.png"
-output_image = "../test_images/image_with_depth.png"
+left_image_path = "../test_images/left_image_3.png"
+right_image_path = "../test_images/right_image_3.png"
+output_image = "../test_images/image_with_depth_2.png"
 
 camera_index = 0;
 
@@ -55,59 +55,81 @@ def capture_picture():
     right_image.save(right_image_path)
     os.remove(image_path)
 
-def create_depth_map():
-    # Load stereo images
+def create_depth_map_SGBM():
     left_img = cv2.imread(left_image_path, cv2.IMREAD_GRAYSCALE)
     right_img = cv2.imread(right_image_path, cv2.IMREAD_GRAYSCALE)
 
-    # Adjusted StereoSGBM Parameters
-    numDisparities = 128  # Increase for more detail
-    blockSize = 5
-    minDisparity = 0
-    disp12MaxDiff = 5
-    uniquenessRatio = 10
-    speckleWindowSize = 100
-    speckleRange = 32
-    P1 = 8 * 3 * blockSize ** 2
-    P2 = 32 * 3 * blockSize ** 2
+    left_img = cv2.equalizeHist(left_img)
+    right_img = cv2.equalizeHist(right_img)
+    
+    window_size = 6
+    n_disp_factor = 6 # adjust
+    num_disp = 16*n_disp_factor
 
-    # Initialize StereoSGBM
+    focal_length = 1000
+    baseline = 0.6
+
     stereo = cv2.StereoSGBM_create(
-        minDisparity=minDisparity,
-        numDisparities=numDisparities,
-        blockSize=blockSize,
-        P1=P1,
-        P2=P2,
-        disp12MaxDiff=disp12MaxDiff,
-        uniquenessRatio=uniquenessRatio,
-        speckleWindowSize=speckleWindowSize,
-        speckleRange=speckleRange
+        minDisparity=0,
+        numDisparities=num_disp,
+        blockSize=window_size,
+        P1=8*1*window_size**2,
+        P2=32*1*window_size**2,
+        disp12MaxDiff=1,
+        uniquenessRatio=7,
+        speckleWindowSize=0,
+        speckleRange=2,
+        preFilterCap=63,
+        mode=cv2.STEREO_SGBM_MODE_SGBM_3WAY
     )
 
-    # Compute disparity map
     disparity = stereo.compute(left_img, right_img).astype(np.float32) / 16.0
 
-    # Display disparity map
-    plt.figure(figsize=(10, 5))
-    plt.imshow(disparity, cmap='gray')
+    depth_map = np.zeros_like(disparity, dtype=np.float32)
+    disparity[disparity == 0] = 1
+    depth_map = (focal_length * baseline) / disparity
+
+    plt.imshow(depth_map, 'gray')
     plt.colorbar()
-    plt.title("Disparity Map")
-    plt.axis("off")
     plt.show()
 
-    # Camera Parameters (adjust as needed)
-    focal_length = 500  
-    baseline = 0.06  
+def create_depth_map():
+    left_img = cv2.imread(left_image_path, cv2.IMREAD_GRAYSCALE)
+    right_img = cv2.imread(right_image_path, cv2.IMREAD_GRAYSCALE)
 
-    # Compute depth map (avoid division by zero)
+    left_img = cv2.equalizeHist(left_img)
+    right_img = cv2.equalizeHist(right_img)
+    
+    window_size = 6
+    n_disp_factor = 6 # adjust
+    num_disp = 16*n_disp_factor
+
+    focal_length = 1000
+    baseline = 0.6
+
+    stereo = cv2.StereoSGBM_create(
+        minDisparity=0,
+        numDisparities=num_disp,
+        blockSize=window_size,
+        P1=8*1*window_size**2,
+        P2=32*1*window_size**2,
+        disp12MaxDiff=1,
+        uniquenessRatio=7,
+        speckleWindowSize=0,
+        speckleRange=2,
+        preFilterCap=63,
+        mode=cv2.STEREO_SGBM_MODE_SGBM_3WAY
+    )
+
+    disparity = stereo.compute(left_img, right_img).astype(np.float32) / 16.0
+
     depth_map = np.zeros_like(disparity, dtype=np.float32)
-    valid_pixels = disparity > 0
-    depth_map[valid_pixels] = (focal_length * baseline) / disparity[valid_pixels]
+    disparity[disparity == 0] = 1
+    depth_map = (focal_length * baseline) / disparity
 
-    # Normalize Depth Map
-    min_depth = np.percentile(depth_map, 5)
-    max_depth = np.percentile(depth_map, 95)
-    depth_map = np.clip(depth_map, min_depth, max_depth)
+    plt.imshow(depth_map, 'gray')
+    plt.colorbar()
+    plt.show()
     
     normalized_depth = cv2.normalize(depth_map, None, 0, 255, cv2.NORM_MINMAX)
     normalized_depth = np.uint8(normalized_depth)
