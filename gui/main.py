@@ -4,6 +4,7 @@ import tkinter as tk
 import numpy as np
 import zlib
 import struct
+import threading
 from PIL import Image, ImageTk
 from datetime import datetime
 from tkinter import Label
@@ -47,13 +48,14 @@ def exit_fullscreen(event=None):
     default_cam_capture.release()  # Release the video capture
     root.destroy()
 
-def capture_picture(filename, processing_path):
+def capture_picture(filename, processing_path, local_path):
     camera_index = 2
     global capturing_image
     capturing_image = True
 
     global default_cam_capture
-    default_cam_capture.release()
+    if default_cam_capture.isOpened():
+        default_cam_capture.release()
 
     camera = cv2.VideoCapture(camera_index)
 
@@ -93,8 +95,10 @@ def capture_picture(filename, processing_path):
     right_image.save(f"{processing_path}/{filename}_right.png")
     os.remove(image_path)
 
+    threading.Thread(target=create_depth_map, args=(filename, processing_path, local_path)).start()
 
-def create_depth_map(filename, processing_path):
+
+def create_depth_map(filename, processing_path, local_path):
     left_img = cv2.imread(f"{processing_path}/{filename}_left.png", cv2.IMREAD_GRAYSCALE)
     right_img = cv2.imread(f"{processing_path}/{filename}_right.png", cv2.IMREAD_GRAYSCALE)
 
@@ -131,7 +135,7 @@ def create_depth_map(filename, processing_path):
     normalized_depth = cv2.normalize(depth_map, None, 0, 255, cv2.NORM_MINMAX)
     normalized_depth = np.uint8(normalized_depth)
 
-    return normalized_depth
+    threading.Thread(target=add_depth_chunk_with_pixel_data, args=(filename, processing_path, local_path, normalized_depth)).start()
 
 
 def add_depth_chunk_with_pixel_data(filename, processing_path, local_path, depth_array):
@@ -191,19 +195,24 @@ def save_current_frame(event=None):
     print("Saving image")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"frame_{timestamp}"
-    
-    capture_picture(filename=filename, processing_path=processing_path)
-    depth_map = create_depth_map(filename=filename, processing_path=processing_path)
-    add_depth_chunk_with_pixel_data(filename=filename, processing_path=processing_path, local_path=local_path, depth_array=depth_map)
 
-    print(f"Saved current frame as {filename}.png")
+    # 🚀 Start the capture process in a new thread
+    threading.Thread(target=capture_picture, args=(filename, processing_path, local_path)).start()
+
+    # capture_picture(filename=filename, processing_path=processing_path)
+    # depth_map = create_depth_map(filename=filename, processing_path=processing_path)
+    # add_depth_chunk_with_pixel_data(filename=filename, processing_path=processing_path, local_path=local_path, depth_array=depth_map)
 
 
 def update_frame():
     """Update the video frame in the Tkinter window."""
     global current_frame
+    global default_cam_capture
     if gallery_active or capturing_image:  # Stop updating if gallery is active
         return
+    
+    if not default_cam_capture.isOpened():
+        default_cam_capture = cv2.VideoCapture(0)
 
     ret, frame = default_cam_capture.read()
     if ret:
