@@ -46,3 +46,11 @@ def send_image_hash_and_signature(image_hash, image_signature):
         "hash_signature": image_signature
     }
 
+    headers = {
+        "Content-Type": "application/json"
+    }
+
+    response = requests.post(url, json=payload, headers=headers)
+
+    print(response.status_code)
+    print(response.json())

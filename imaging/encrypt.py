@@ -5,6 +5,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from cryptography.hazmat.primitives.serialization import load_pem_private_key, load_pem_public_key
 from binascii import hexlify, unhexlify
+from imaging import send_to_db
 from imaging.png import PngInteractor
 
 # Constants
@@ -120,6 +121,8 @@ def sign_png(filename: str):
             print("\nSignature Verified ✓")
         else:
             print("\nSignature Verification Failed ✗")
+        
+        send_to_db(image_hash, signature);
 
     except Exception as e:
         print(f"Error: {str(e)}")
