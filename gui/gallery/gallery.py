@@ -3,6 +3,8 @@ import cv2
 import tkinter as tk
 from PIL import Image, ImageTk
 
+from gui.image_viewer.image_viewer import Image_Viewer
+
 # Expand the home directory properly
 LOCAL_DIRECTORY = "./gallery/local"
 UPLOADED_DIRECTORY = "./gallery/uploaded"
@@ -56,42 +58,61 @@ class Gallery:
         """Load and display images in a 3-column format."""
         row = 1  # Start from row 1 since row 0 has titles
         col = 1
-        
+
+        img_paths = []
+
         for name in os.listdir(LOCAL_DIRECTORY):
             file_path = os.path.join(LOCAL_DIRECTORY, name)
             if name.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
-                img = Image.open(file_path)
-                img.thumbnail((200, 200))  # Resize images to fit nicely
-                img = ImageTk.PhotoImage(img)
+                img_paths.append(file_path)
+        
+        for img_path in img_paths:
+            img = Image.open(img_path)
+            img.thumbnail((200, 200))  # Resize images to fit nicely
+            img = ImageTk.PhotoImage(img)
 
-                self.image_refs.append(img)
+            self.image_refs.append(img)
 
-                # Create a label for the image
-                img_label = tk.Label(self.image_frame, image=img, bg="white")
-                img_label.grid(row=row, column=col, padx=20, pady=10)
+            # Create a label for the image
+            img_button = tk.Button(self.image_frame, image=img, bg="white",
+                                   command=lambda paths=img_paths, idx=0, cat="Local": self.open_image_viewer(paths, idx, cat))
+            img_button.grid(row=row, column=col, padx=20, pady=10)
+            # img_label = tk.Label(self.image_frame, image=img, bg="white")
+            # img_label.grid(row=row, column=col, padx=20, pady=10)
 
-                break
+            break
 
     def load_uploaded_image(self):
         """Load and display images in a 3-column format."""
         row = 1  # Start from row 1 since row 0 has titles
         col = 0
-        
+
+        img_paths = []
+
         for name in os.listdir(UPLOADED_DIRECTORY):
             file_path = os.path.join(UPLOADED_DIRECTORY, name)
             if name.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
-                img = Image.open(file_path)
-                img.thumbnail((200, 200))  # Resize images to fit nicely
-                img = ImageTk.PhotoImage(img)
+                img_paths.append(file_path)
+        
+        for img_path in img_paths:
+            img = Image.open(img_path)
+            img.thumbnail((200, 200))  # Resize images to fit nicely
+            img = ImageTk.PhotoImage(img)
 
-                self.image_refs.append(img)
+            self.image_refs.append(img)
 
-                # Create a label for the image
-                img_label = tk.Label(self.image_frame, image=img, bg="white")
-                img_label.grid(row=row, column=col, padx=20, pady=10)
+            # Create a label for the image
+            img_button = tk.Button(self.image_frame, image=img, bg="white",
+                                   command=lambda paths=img_paths, idx=0, cat="Uploaded": self.open_image_viewer(paths, idx, cat))
+            img_button.grid(row=row, column=col, padx=20, pady=10)
+            # img_label = tk.Label(self.image_frame, image=img, bg="white")
+            # img_label.grid(row=row, column=col, padx=20, pady=10)
 
-                break
+            break
 
+    def open_image_viewer(self, image_paths, start_index, category):
+        """Open Image_Viewer for selected category."""
+        Image_Viewer(self.root, image_paths, start_index, category)
 
     def open(self):
         """Switch to the gallery view."""

@@ -8,6 +8,8 @@ from binascii import hexlify, unhexlify
 from imaging import send_to_db
 from imaging.png import PngInteractor
 
+import sys
+
 # Constants
 PRIVATE_KEY_FILE_NAME = "shadow/private_key.pem"
 PUBLIC_KEY_FILE_NAME = "shadow/public_key.pem"
@@ -78,6 +80,8 @@ def sign_png(filename: str):
         png_creation_interactor = PngInteractor(filename)
 
         # Hash the image
+        print("BYTES")
+        print(hexlify(png_creation_interactor.image_bytes[:30]))
         image_hash = hash_image_sha256(png_creation_interactor.image_bytes)
         print(f"Image hash (bytes): {image_hash}")
         print(f"Image hash (hex): {hexlify(image_hash).decode()}")
@@ -127,3 +131,24 @@ def sign_png(filename: str):
     except Exception as e:
         print(f"Error: {str(e)}")
         return
+    
+if __name__ == "__main__":
+    filename = "gallery/local/frame_20250227_190856.png"
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_filename = f"gallery/uploaded/done_{timestamp}.png"
+    
+    # Create PNG interactor for the input image
+    png_creation_interactor = PngInteractor(filename)
+
+    # Hash the image
+    # print("BYTES")
+    print(hexlify(png_creation_interactor.image_bytes).decode())
+    image_hash = hash_image_sha256(png_creation_interactor.image_bytes)
+    # print(f"Image hash (bytes): {image_hash}")
+    # print(f"Image hash (hex): {hexlify(image_hash).decode()}")
+
+    # print(f"Python version: {sys.version}")
+    # print(f"Hashlib module location: {hashlib.__file__}")
+    # print(hashlib.algorithms_available)
+
+

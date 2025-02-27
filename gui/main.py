@@ -278,8 +278,38 @@ def click_gallery(channel):
     print("TOGGLE GALLERY")
     root.event_generate("g")
 
-GPIO.add_event_detect(12, GPIO.FALLING, callback=click_picture, bouncetime=200)
-GPIO.add_event_detect(13, GPIO.FALLING, callback=click_gallery, bouncetime=200)
+def click_19(channel):
+    print("Pressed Right")
+    root.event_generate("<Right>")
+
+def click_16(channel):
+    print("Pressed Down")
+    root.event_generate("<Down>")
+
+def click_26(channel):
+    print("Pressed Up")
+    root.event_generate("<Up>")
+
+def click_20(channel):
+    print("Pressed Center")
+    root.event_generate("<Return>")
+
+def click_13(channel):
+    print("Pressed Left")
+    root.event_generate("<Left>")
+
+def click_12(channel):
+    print("Pressed Capture")
+    root.event_generate("s")
+
+
+GPIO.add_event_detect(12, GPIO.FALLING, callback=click_12, bouncetime=200)
+GPIO.add_event_detect(13, GPIO.FALLING, callback=click_13, bouncetime=200)
+GPIO.add_event_detect(19, GPIO.FALLING, callback=click_19, bouncetime=200)
+GPIO.add_event_detect(16, GPIO.FALLING, callback=click_16, bouncetime=200)
+GPIO.add_event_detect(26, GPIO.FALLING, callback=click_26, bouncetime=200)
+GPIO.add_event_detect(20, GPIO.FALLING, callback=click_20, bouncetime=200)
+
 
 # Initialize OpenCV video capture
 default_cam_capture = cv2.VideoCapture(0)
