@@ -13,6 +13,7 @@ import RPi.GPIO as GPIO
 import gui.image_processing as img_proc
 from gui.menu import OverlayMenu
 from gui.gallery import Gallery
+from imaging.encrypt import sign_png
 
 
 # GLOBAL VARIABLES #
@@ -32,7 +33,7 @@ video_label = Label(root)
 video_label.pack(fill=tk.BOTH, expand=True)
 
 # FEATURES # 
-overlay_menu = OverlayMenu(root)
+# overlay_menu = OverlayMenu(root)
 
 
 def toggle_fullscreen(event=None):
@@ -183,6 +184,11 @@ def add_depth_chunk_with_pixel_data(filename, processing_path, local_path, depth
         f.write(new_png_data)
     print(f"Depth data chunk added to {output_image}")
 
+    # TEST SIGNING
+    print("TESTING SIGNING")
+    sign_png(output_image)
+    print("DONE SIGNING")
+
     os.remove(left_image_path)
     os.remove(right_image_path)
 
@@ -198,10 +204,6 @@ def save_current_frame(event=None):
 
     # 🚀 Start the capture process in a new thread
     threading.Thread(target=capture_picture, args=(filename, processing_path, local_path)).start()
-
-    # capture_picture(filename=filename, processing_path=processing_path)
-    # depth_map = create_depth_map(filename=filename, processing_path=processing_path)
-    # add_depth_chunk_with_pixel_data(filename=filename, processing_path=processing_path, local_path=local_path, depth_array=depth_map)
 
 
 def update_frame():
@@ -240,8 +242,8 @@ def update_frame():
 root.bind("<F11>", toggle_fullscreen)
 root.bind("<Escape>", exit_fullscreen)
 root.bind("s", save_current_frame)
-root.bind("m", overlay_menu.toggle_menu)
-root.bind("<Return>", overlay_menu.select)
+# root.bind("m", overlay_menu.toggle_menu)
+# root.bind("<Return>", overlay_menu.select)
 
 # GALLERY INTEGRATION #
 gallery = Gallery(root, video_label, update_frame)

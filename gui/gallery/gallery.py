@@ -16,8 +16,7 @@ class Gallery:
 
         self.gallery_view = None
         self.image_frame = None
-        self.image_paths = []  # List to store image file paths
-        self.images = []       # List to store PhotoImage references
+        self.image_refs = []
 
         self.create_gallery()
     
@@ -45,39 +44,54 @@ class Gallery:
             self.image_frame.grid_columnconfigure(i, weight=1)
 
         # Create column titles
-        titles = ["All", "Uploaded", "Local"]
+        titles = ["Uploaded", "Local"]
         for i, title in enumerate(titles):
             label = tk.Label(self.image_frame, text=title, font=("Arial", 14, "bold"), bg="white")
             label.grid(row=0, column=i, padx=20, pady=10, sticky="n")
 
-        # Get image paths
+        self.load_uploaded_image()
+        self.load_local_image()
+    
+    def load_local_image(self):
+        """Load and display images in a 3-column format."""
+        row = 1  # Start from row 1 since row 0 has titles
+        col = 1
+        
         for name in os.listdir(LOCAL_DIRECTORY):
             file_path = os.path.join(LOCAL_DIRECTORY, name)
             if name.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
-                self.image_paths.append(file_path)
+                img = Image.open(file_path)
+                img.thumbnail((200, 200))  # Resize images to fit nicely
+                img = ImageTk.PhotoImage(img)
 
-        self.load_images()
-    
-    def load_images(self):
+                self.image_refs.append(img)
+
+                # Create a label for the image
+                img_label = tk.Label(self.image_frame, image=img, bg="white")
+                img_label.grid(row=row, column=col, padx=20, pady=10)
+
+                break
+
+    def load_uploaded_image(self):
         """Load and display images in a 3-column format."""
         row = 1  # Start from row 1 since row 0 has titles
         col = 0
-        self.image_refs = []  # Keep references to avoid garbage collection
+        
+        for name in os.listdir(UPLOADED_DIRECTORY):
+            file_path = os.path.join(UPLOADED_DIRECTORY, name)
+            if name.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+                img = Image.open(file_path)
+                img.thumbnail((200, 200))  # Resize images to fit nicely
+                img = ImageTk.PhotoImage(img)
 
-        for img_path in self.image_paths:
-            img = Image.open(img_path)
-            img.thumbnail((200, 200))  # Resize images to fit nicely
-            img = ImageTk.PhotoImage(img)
+                self.image_refs.append(img)
 
-            # Create a label for the image
-            img_label = tk.Label(self.image_frame, image=img, bg="white")
-            img_label.grid(row=row, column=col, padx=20, pady=10)
-            self.image_refs.append(img)  # Store reference to avoid garbage collection
+                # Create a label for the image
+                img_label = tk.Label(self.image_frame, image=img, bg="white")
+                img_label.grid(row=row, column=col, padx=20, pady=10)
 
-            col += 1
-            if col > 2:  # Reset column and move to the next row after 3 images
-                col = 0
-                row += 1
+                break
+
 
     def open(self):
         """Switch to the gallery view."""
