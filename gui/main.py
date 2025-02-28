@@ -255,7 +255,7 @@ def toggle_gallery(event=None):
     else:
         gallery.open()
 
-root.bind("g", toggle_gallery)  # Press "g" to switch to the gallery
+root.bind("<Return>", toggle_gallery)  # Press "<Return>" to switch to the gallery
 
 
 # GPIO SETUP #
@@ -276,7 +276,7 @@ def click_picture(channel):
 
 def click_gallery(channel):
     print("TOGGLE GALLERY")
-    root.event_generate("g")
+    root.event_generate("<Return>")
 
 def click_19(channel):
     print("Pressed Right")

@@ -2,6 +2,8 @@ import requests
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
+from imaging.png import PngInteractor
+import sys
 
 BASE_URL = "https://3.133.137.72:5000"
 PRIVATE_KEY_FILE_NAME = "../shadow/private_key.pem"
@@ -32,7 +34,8 @@ def sign_username(private_key: rsa.RSAPrivateKey, message: bytes) -> bytes:
         raise Exception(f"Error signing message: {str(e)}")
 
 def send_image_hash_and_signature(image_hash, image_signature):
-    url = f"{BASE_URL}/api/image"
+    # url = f"{BASE_URL}/api/image"
+    url = "oof"
     username = "pi"
 
     username_bytes = bytes("pi", encoding="ascii")
@@ -46,6 +49,11 @@ def send_image_hash_and_signature(image_hash, image_signature):
         "hash_signature": image_signature
     }
 
+    print(username_signature)
+    print(username)
+    print(image_hash)
+    print(image_signature)
+
     headers = {
         "Content-Type": "application/json"
     }
@@ -54,3 +62,17 @@ def send_image_hash_and_signature(image_hash, image_signature):
 
     print(response.status_code)
     print(response.json())
+
+if __name__ == "__main__":
+    filename = ""
+    if len(sys.argv) > 1:
+        filename = sys.argv[1]
+    else:
+        while not filename:
+            filename = input("Give a file name to upload")
+    
+
+    png_creation_interactor = PngInteractor(filename)
+    image_hash = hash_image_sha256(png_creation_interactor.image_bytes)
+    
+    send_image_hash_and_signature(image_hash, image_signature)
