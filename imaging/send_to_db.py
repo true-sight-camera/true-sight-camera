@@ -2,11 +2,20 @@ import requests
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
-from imaging.png import PngInteractor
-import sys
+from binascii import hexlify
 
-BASE_URL = "https://3.133.137.72:5000"
-PRIVATE_KEY_FILE_NAME = "../shadow/private_key.pem"
+
+BASE_URL = "http://3.133.137.72:5000"
+PRIVATE_KEY_FILE_NAME = "shadow/private_key.pem"
+
+
+# class SSLAdapter(HTTPAdapter):
+#     def init_poolmanager(self, *args, **kwargs):
+#         context = ssl.create_default_context()
+#         context.set_ciphers('ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384')
+#         kwargs['ssl_context'] = context
+#         return super().init_poolmanager(*args, **kwargs)
+
 
 def load_private_key(file_path: str) -> rsa.RSAPrivateKey:
     """Load an RSA private key from a PEM file."""
@@ -34,45 +43,28 @@ def sign_username(private_key: rsa.RSAPrivateKey, message: bytes) -> bytes:
         raise Exception(f"Error signing message: {str(e)}")
 
 def send_image_hash_and_signature(image_hash, image_signature):
-    # url = f"{BASE_URL}/api/image"
-    url = "oof"
+    url = f"{BASE_URL}/api/image"
     username = "pi"
 
     username_bytes = bytes("pi", encoding="ascii")
     private_key = load_private_key(PRIVATE_KEY_FILE_NAME)
     username_signature = sign_username(private_key, username_bytes)
-
+    
     payload = {
-        "encrypted_username": username_signature,
-        "username": username,
-        "signed_hash": image_hash,
-        "hash_signature": image_signature
+        "encrypted_username": (None, hexlify(username_signature).decode()),
+        "username": (None, username),
+        "signed_hash": (None, image_hash.hex()),
+        "hash_signature": (None, image_signature)
     }
 
-    print(username_signature)
-    print(username)
-    print(image_hash)
-    print(image_signature)
+    headers = {}
 
-    headers = {
-        "Content-Type": "application/json"
-    }
+    # print(payload)
+    # session = requests.Session()
+    # session.mount('https://', SSLAdapter())
+    # response = session.post(url, files=payload, headers=headers)
 
-    response = requests.post(url, json=payload, headers=headers)
+    response = requests.post(url, files=payload, headers=headers)
 
     print(response.status_code)
-    print(response.json())
-
-if __name__ == "__main__":
-    filename = ""
-    if len(sys.argv) > 1:
-        filename = sys.argv[1]
-    else:
-        while not filename:
-            filename = input("Give a file name to upload")
-    
-
-    png_creation_interactor = PngInteractor(filename)
-    image_hash = hash_image_sha256(png_creation_interactor.image_bytes)
-    
-    send_image_hash_and_signature(image_hash, image_signature)
+    print(response.text)

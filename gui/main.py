@@ -246,14 +246,29 @@ root.bind("s", save_current_frame)
 # root.bind("<Return>", overlay_menu.select)
 
 # GALLERY INTEGRATION #
-gallery = Gallery(root, video_label, update_frame)
 
 def toggle_gallery(event=None):
     """Toggle between the video feed and the gallery."""
+    global gallery_active
+
+    print("HELLO")
     if gallery_active:
-        gallery.close()
+        print("Time to close")
+        # ✅ Closing Gallery - Return to Video Feed
+        gallery_active = False
+        
+        # ✅ Rebind video feed controls
+        root.bind("<Return>", toggle_gallery)  # Open gallery
+        root.bind("s", save_current_frame)  # Capture image
+        
+        # ✅ Restart video feed (fixes white screen issue)
+        root.after(5, update_frame)
     else:
+        # ✅ Opening Gallery - Hide Video Feed
+        gallery_active = True
         gallery.open()
+
+gallery = Gallery(root, video_label, update_frame, toggle_gallery)
 
 root.bind("<Return>", toggle_gallery)  # Press "<Return>" to switch to the gallery
 
@@ -271,35 +286,27 @@ GPIO.setup(13, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 GPIO.setup(12, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
 def click_picture(channel):
-    print("PICTURE")
     root.event_generate("s")
 
 def click_gallery(channel):
-    print("TOGGLE GALLERY")
     root.event_generate("<Return>")
 
 def click_19(channel):
-    print("Pressed Right")
     root.event_generate("<Right>")
 
 def click_16(channel):
-    print("Pressed Down")
     root.event_generate("<Down>")
 
 def click_26(channel):
-    print("Pressed Up")
     root.event_generate("<Up>")
 
 def click_20(channel):
-    print("Pressed Center")
     root.event_generate("<Return>")
 
 def click_13(channel):
-    print("Pressed Left")
     root.event_generate("<Left>")
 
 def click_12(channel):
-    print("Pressed Capture")
     root.event_generate("s")
 
 

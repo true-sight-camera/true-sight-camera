@@ -5,7 +5,7 @@ import os
 class Image_Viewer:
     """A class to handle full-screen image viewing with navigation and togglable UI."""
     
-    def __init__(self, root, image_paths, start_index, category):
+    def __init__(self, root, image_paths, start_index, category, gallery):
         self.root = root
         self.image_paths = image_paths
         self.current_index = start_index
@@ -14,6 +14,7 @@ class Image_Viewer:
         self.bottom_buttons = []  # Track buttons for navigation
         self.top_buttons = []
         self.focus_index = [0, 0]  # Track the currently focused button
+        self.gallery = gallery
 
         # Hide previous view (gallery)
         for widget in self.root.winfo_children():
@@ -52,35 +53,35 @@ class Image_Viewer:
         self.bottom_bar = tk.Frame(self.viewer_frame, bg="black")
         self.bottom_bar.pack(side="bottom", fill="x", pady=10)
 
-        # Right side container for both sets of buttons
-        self.right_controls = tk.Frame(self.bottom_bar, bg="black")
-        self.right_controls.pack(side="right", padx=20)
-
-        # Left Controls (Hide UI & Close) - Placed together
-        self.left_controls = tk.Frame(self.right_controls, bg="black")  # Inside right_controls
-        self.left_controls.pack(side="left", padx=20)  # Positioned first (closer to center)
+        # ✅ Left side container (for Hide UI, Delete, Upload)
+        self.left_controls = tk.Frame(self.bottom_bar, bg="black")
+        self.left_controls.pack(side="left", padx=20)  # ✅ Now correctly positioned on the left
 
         self.hide_ui_button = tk.Button(self.left_controls, text="Hide UI", command=self.toggle_ui_mode, font=("Arial", 12))
-        self.hide_ui_button.pack(side="left", padx=5)  # Place Hide UI button on the left
+        self.hide_ui_button.pack(side="left", padx=5)
 
         self.delete_button = tk.Button(self.left_controls, text="Delete", command=self.delete_image, font=("Arial", 12))
         self.delete_button.pack(side="left", padx=5)
 
-        self.upload_button = tk.Button(self.left_controls, text="Upload", command=self.delete_image, font=("Arial", 12))
-        self.upload_button.pack(side="left", padx=5)
+        if category == "Local":
+            self.upload_button = tk.Button(self.left_controls, text="Upload", command=self.delete_image, font=("Arial", 12))
+            self.upload_button.pack(side="left", padx=5)
 
-        # Right Controls (← & →) - Placed beside each other
-        self.nav_controls = tk.Frame(self.right_controls, bg="black")  # Inside right_controls
-        self.nav_controls.pack(side="left", padx=10)  # Positioned next to left_controls
+        # ✅ Right side container (for navigation buttons)
+        self.right_controls = tk.Frame(self.bottom_bar, bg="black")
+        self.right_controls.pack(side="right", padx=20)  # ✅ Now correctly positioned on the right
 
-        self.prev_button = tk.Button(self.nav_controls, text="←", command=self.show_prev, font=("Arial", 14))
-        self.prev_button.pack(side="left", padx=5)  # Place Left button on the left
+        self.prev_button = tk.Button(self.right_controls, text="⬅", command=self.show_prev, font=("Arial", 14, "bold"))
+        self.prev_button.pack(side="left", padx=5)
 
-        self.next_button = tk.Button(self.nav_controls, text="→", command=self.show_next, font=("Arial", 14))
-        self.next_button.pack(side="left", padx=5)  # Place Right button next to Left button
+        self.next_button = tk.Button(self.right_controls, text="➡", command=self.show_next, font=("Arial", 14, "bold"))
+        self.next_button.pack(side="left", padx=5)
 
         # Add buttons to navigation list
-        self.bottom_buttons.extend([self.hide_ui_button, self.delete_button, self.upload_button, self.prev_button, self.next_button])
+        if category == "Local":
+            self.bottom_buttons.extend([self.hide_ui_button, self.delete_button, self.upload_button, self.prev_button, self.next_button])
+        else:
+            self.bottom_buttons.extend([self.hide_ui_button, self.delete_button, self.prev_button, self.next_button])
 
         # Image display area
         self.image_label = tk.Label(self.viewer_frame, bg="black")
@@ -98,7 +99,8 @@ class Image_Viewer:
         self.root.bind("<Down>", lambda event: self.navigate_buttons("down"))
 
         # Focus on first button
-        self.set_focus(0)
+        self.focus_index = [0, 0]
+        self.set_focus(self.focus_index)
 
     def display_image(self):
         """Display the current image while preserving aspect ratio."""
@@ -160,11 +162,11 @@ class Image_Viewer:
         
         if direction == "up":
             self.focus_index[1] = (self.focus_index[1] + 1) % 2
-            if self.focus_index[1] == 1 and self.focus_index[0] > len(self.top_buttons):
+            if self.focus_index[1] == 1 and self.focus_index[0] >= len(self.top_buttons):
                 self.focus_index[0] = 0
         elif direction == "down":
             self.focus_index[1] = (self.focus_index[1] - 1) % 2
-            if self.focus_index[1] == 1 and self.focus_index[0] > len(self.top_buttons):
+            if self.focus_index[1] == 1 and self.focus_index[0] >= len(self.top_buttons):
                 self.focus_index[0] = 0
         elif direction == "right":
             if self.focus_index[1] == 1:
@@ -207,7 +209,8 @@ class Image_Viewer:
             # Show UI
             self.top_bar.pack(side="top", fill="x", before=self.image_label)
             self.bottom_bar.pack(side="bottom", fill="x", pady=10, before=self.image_label)
-            self.set_focus(0)  # Focus on the first button
+            self.focus_index = [0, 0]
+            self.set_focus(self.focus_index)  # Focus on the first button
 
         self.ui_visible = not self.ui_visible
 
@@ -251,12 +254,23 @@ class Image_Viewer:
     def return_to_gallery(self):
         """Closes the viewer and returns to the gallery."""
         self.viewer_frame.pack_forget()
-        self.gallery.open()  # Calls the gallery instance to reopen
+        if self.gallery:  # ✅ Ensure gallery is available
+            self.gallery.open()
+        else:
+            print("Error: No gallery instance available!")  # ✅ Debugging message
+
 
     def return_to_main_view(self):
         """Closes the viewer and returns to the main video feed."""
         self.viewer_frame.pack_forget()
-        # self.root.attributes('-fullscreen', False)  # Exit fullscreen
-        self.video_label.pack(fill="both", expand=True)  # Show video feed again
-        self.update_frame()  # Restart the video updates
+
+        if self.gallery.video_label:
+            self.gallery.video_label.pack(fill="both", expand=True)
+
+        self.root.unbind("<Right>")
+        self.root.unbind("<Left>")
+        self.root.unbind("<Up>")
+        self.root.unbind("<Down>")
+
+        self.gallery.toggle_gallery()
 

@@ -5,7 +5,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from cryptography.hazmat.primitives.serialization import load_pem_private_key, load_pem_public_key
 from binascii import hexlify, unhexlify
-from imaging import send_to_db
+from imaging.send_to_db import send_image_hash_and_signature
 from imaging.png import PngInteractor
 
 import sys
@@ -83,14 +83,14 @@ def sign_png(filename: str):
         print("BYTES")
         print(hexlify(png_creation_interactor.image_bytes[:30]))
         image_hash = hash_image_sha256(png_creation_interactor.image_bytes)
-        print(f"Image hash (bytes): {image_hash}")
-        print(f"Image hash (hex): {hexlify(image_hash).decode()}")
-        print(f"Image hash (bytes array): {list(image_hash)}")
+        # print(f"Image hash (bytes): {image_hash}")
+        # print(f"Image hash (hex): {hexlify(image_hash).decode()}")
+        # print(f"Image hash (bytes array): {list(image_hash)}")
 
         # Load private key and sign the hash
         private_key = load_private_key(PRIVATE_KEY_FILE_NAME)
         signed_bytes = sign_message(private_key, image_hash)  # Pass bytes directly
-        print(f"SIGNED MESSAGE: {hexlify(signed_bytes).decode()}\n")
+        # print(f"SIGNED MESSAGE: {hexlify(signed_bytes).decode()}\n")
 
 
         # Add signature to image metadata
@@ -118,15 +118,15 @@ def sign_png(filename: str):
         
         # Print verification data for debugging
         print(f"\nVerifying signature using the following data:")
-        print(f"Original hash: {hexlify(image_hash).decode()}")
-        print(f"Signature: {hexlify(signature_bytes).decode()}")
+        # print(f"Original hash: {hexlify(image_hash).decode()}")
+        # print(f"Signature: {hexlify(signature_bytes).decode()}")
         
         if verify_signature(public_key, image_hash, signature_bytes):
             print("\nSignature Verified ✓")
         else:
             print("\nSignature Verification Failed ✗")
         
-        send_to_db(image_hash, signature);
+        send_image_hash_and_signature(image_hash, signature)
 
     except Exception as e:
         print(f"Error: {str(e)}")
