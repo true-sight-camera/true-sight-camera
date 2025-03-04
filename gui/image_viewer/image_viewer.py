@@ -2,6 +2,8 @@ import tkinter as tk
 from PIL import Image, ImageTk
 import os
 
+from imaging.encrypt import sign_png
+
 class Image_Viewer:
     """A class to handle full-screen image viewing with navigation and togglable UI."""
     
@@ -64,7 +66,7 @@ class Image_Viewer:
         self.delete_button.pack(side="left", padx=5)
 
         if category == "Local":
-            self.upload_button = tk.Button(self.left_controls, text="Upload", command=self.delete_image, font=("Arial", 12))
+            self.upload_button = tk.Button(self.left_controls, text="Upload", command=self.upload_image, font=("Arial", 12))
             self.upload_button.pack(side="left", padx=5)
 
         # ✅ Right side container (for navigation buttons)
@@ -224,6 +226,18 @@ class Image_Viewer:
         """Displays 'No Images Left' message in the center."""
         self.image_label.config(image="")  # Clear any previous image
         self.image_label.config(text="No Images Left", font=("Arial", 20, "bold"), fg="white", bg="black")
+    
+    def upload_image(self):
+        if not self.image_paths:
+            return  # No images left
+
+        img_path = self.image_paths[self.current_index]
+        try:
+            sign_png(img_path)
+        except Exception as e:
+            print(f"Error signing image {img_path}: {e}")
+        
+        self.delete_image()
 
     def delete_image(self):
         """Deletes the current image and moves to the next one or shows a message if none remain."""

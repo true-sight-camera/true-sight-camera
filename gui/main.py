@@ -185,9 +185,9 @@ def add_depth_chunk_with_pixel_data(filename, processing_path, local_path, depth
     print(f"Depth data chunk added to {output_image}")
 
     # TEST SIGNING
-    print("TESTING SIGNING")
-    sign_png(output_image)
-    print("DONE SIGNING")
+    # print("TESTING SIGNING")
+    # sign_png(output_image)
+    # print("DONE SIGNING")
 
     os.remove(left_image_path)
     os.remove(right_image_path)
@@ -251,9 +251,7 @@ def toggle_gallery(event=None):
     """Toggle between the video feed and the gallery."""
     global gallery_active
 
-    print("HELLO")
     if gallery_active:
-        print("Time to close")
         # ✅ Closing Gallery - Return to Video Feed
         gallery_active = False
         

@@ -1,4 +1,6 @@
+import os
 import requests
+import sys
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
@@ -42,7 +44,7 @@ def sign_username(private_key: rsa.RSAPrivateKey, message: bytes) -> bytes:
     except Exception as e:
         raise Exception(f"Error signing message: {str(e)}")
 
-def send_image_hash_and_signature(image_hash, image_signature):
+def send_image_data(image_hash, image_signature, image_data):
     url = f"{BASE_URL}/api/image"
     username = "pi"
 
@@ -68,3 +70,25 @@ def send_image_hash_and_signature(image_hash, image_signature):
 
     print(response.status_code)
     print(response.text)
+
+    # Upload image itself
+    upload_image(image_data)
+
+# Endpoint URL (adjust host/port as needed)
+
+def upload_image(image_data):
+    """
+    Reads the file at file_path in binary mode and uploads it
+    to the Flask endpoint as the request body.
+    """
+    url = f"{BASE_URL}/api/store_image"
+
+    response = requests.post(url, data=image_data)
+    
+    if response.status_code == 200:
+        print(f"Uploaded image successfully.")
+        print("Response:", response.json())
+    else:
+        print(f"Failed to upload image.")
+        print("Status code:", response.status_code)
+        print("Response:", response.text)

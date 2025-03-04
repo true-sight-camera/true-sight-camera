@@ -5,7 +5,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from cryptography.hazmat.primitives.serialization import load_pem_private_key, load_pem_public_key
 from binascii import hexlify, unhexlify
-from imaging.send_to_db import send_image_hash_and_signature
+from imaging.send_to_db import send_image_data
 from imaging.png import PngInteractor
 
 import sys
@@ -126,7 +126,7 @@ def sign_png(filename: str):
         else:
             print("\nSignature Verification Failed ✗")
         
-        send_image_hash_and_signature(image_hash, signature)
+        send_image_data(image_hash, signature, png_creation_interactor.image_bytes)
 
     except Exception as e:
         print(f"Error: {str(e)}")
