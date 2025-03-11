@@ -141,7 +141,13 @@ class Gallery:
 
             button.config(bg="white", fg="black")  # Reset all buttons
 
-        self.buttons[index].config(bg="royalblue", fg="white")  # Highlight focused button
+        self.buttons[index].config(
+            bg="royalblue",
+            fg="white",
+            bd=6,
+            padx=10,
+            pady=10
+        )
         self.buttons[index].focus_set()  # Set keyboard focus
 
         self.focus_index = index
