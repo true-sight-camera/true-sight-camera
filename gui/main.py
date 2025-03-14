@@ -9,6 +9,8 @@ from PIL import Image, ImageTk
 from datetime import datetime
 from tkinter import Label
 import RPi.GPIO as GPIO
+import ArducamDepthCamera as ac
+
 
 import gui.image_processing as img_proc
 from gui.menu import OverlayMenu
@@ -21,7 +23,9 @@ fullscreen = True  # Start in fullscreen mode
 current_frame = None  # Store the current frame
 gallery_active = False  # Track if the gallery is active
 capturing_image = False
+overlay = None
 GALLERY_DIRECTORY = "./gallery"
+DEFAULT_CAM_IDX = 1
 
 # Initialize the main Tkinter window
 root = tk.Tk()
@@ -49,104 +53,117 @@ def exit_fullscreen(event=None):
     default_cam_capture.release()  # Release the video capture
     root.destroy()
 
-def capture_picture(filename, processing_path, local_path):
-    camera_index = 2
-    global capturing_image
-    capturing_image = True
+def show_loading_overlay():
+    """Show a semi-transparent overlay with a loading icon."""
+    global loading_label, overlay
 
-    global default_cam_capture
-    if default_cam_capture.isOpened():
-        default_cam_capture.release()
+    # Create a full-screen overlay
+    overlay = tk.Canvas(root, bg="black", width=root.winfo_screenwidth(), height=root.winfo_screenheight())
+    overlay.place(relx=0, rely=0, relwidth=1, relheight=1)
 
-    camera = cv2.VideoCapture(camera_index)
+    # Set transparency by using a dark background
+    overlay.configure(bg="#000000", highlightthickness=0)  # Solid black background
 
-    if not camera.isOpened():
-        print(f"Error: Could not access the camera at index {camera_index}.")
-        return
+    # Add loading text
+    loading_label = tk.Label(overlay, text="Capturing...", font=("Arial", 40), fg="white", bg="black")
+    loading_label.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
-    print(f"Capturing an image from camera {camera_index}. Please wait...")
-
-    # Capture a single frame
-    ret, frame = camera.read()
-
-    image_path = f"{processing_path}/{filename}.png"
-
-    if not ret:
-        print(f"Error: Failed to capture frame from camera {camera_index}.")
-    else:
-        # Save the captured image
-        cv2.imwrite(image_path, frame)
-        print(f"Image saved to {os.path.abspath(image_path)}")
-
-    # Release the camera
-    camera.release()
-    capturing_image = False
-    default_cam_capture = cv2.VideoCapture(0)
-    update_frame()
-
-    image = Image.open(image_path)
-
-    width, height = image.size
-    split_point = width // 2
-
-    left_image = image.crop((0, 0, split_point, height))
-    right_image = image.crop((split_point, 0, width, height))
-
-    left_image.save(f"{processing_path}/{filename}_left.png")
-    right_image.save(f"{processing_path}/{filename}_right.png")
-    os.remove(image_path)
-
-    threading.Thread(target=create_depth_map, args=(filename, processing_path, local_path)).start()
+    # Force UI update
+    root.update_idletasks()
 
 
-def create_depth_map(filename, processing_path, local_path):
-    left_img = cv2.imread(f"{processing_path}/{filename}_left.png", cv2.IMREAD_GRAYSCALE)
-    right_img = cv2.imread(f"{processing_path}/{filename}_right.png", cv2.IMREAD_GRAYSCALE)
+import cv2
+import numpy as np
 
-    left_img = cv2.equalizeHist(left_img)
-    right_img = cv2.equalizeHist(right_img)
-    
-    window_size = 6
-    n_disp_factor = 6 # adjust
-    num_disp = 16*n_disp_factor
+def resize_with_padding(image, target_width, target_height):
+    h, w = image.shape[:2]
 
-    focal_length = 1000
-    baseline = 0.6
+    # Crop if larger than target
+    if w > target_width or h > target_height:
+        aspect_ratio_img = w / h
+        aspect_ratio_target = target_width / target_height
 
-    stereo = cv2.StereoSGBM_create(
-        minDisparity=0,
-        numDisparities=num_disp,
-        blockSize=window_size,
-        P1=8*1*window_size**2,
-        P2=32*1*window_size**2,
-        disp12MaxDiff=1,
-        uniquenessRatio=7,
-        speckleWindowSize=0,
-        speckleRange=2,
-        preFilterCap=63,
-        mode=cv2.STEREO_SGBM_MODE_SGBM_3WAY
+        if aspect_ratio_img > aspect_ratio_target:
+            new_w = target_width
+            new_h = int(target_width / aspect_ratio_img)
+        else:
+            new_h = target_height
+            new_w = int(target_height * aspect_ratio_img)
+
+        image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
+    # Padding if smaller
+    h, w = image.shape[:2]
+    pad_x = (target_width - w) // 2
+    pad_y = (target_height - h) // 2
+
+    padded = cv2.copyMakeBorder(
+        image, pad_y, target_height - h - pad_y, pad_x, target_width - w - pad_x,
+        cv2.BORDER_CONSTANT, value=(255, 255, 255)
     )
 
-    disparity = stereo.compute(left_img, right_img).astype(np.float32) / 16.0
+    return padded
 
-    depth_map = np.zeros_like(disparity, dtype=np.float32)
-    disparity[disparity == 0] = 1
-    depth_map = (focal_length * baseline) / disparity
+def normalize_depth(depth_buf):
+    depth_min = np.min(depth_buf)
+    depth_max = np.max(depth_buf)
+    if depth_max > depth_min:  # Avoid division by zero
+        normalized = (depth_buf - depth_min) / (depth_max - depth_min) * 255.0
+    else:
+        normalized = np.zeros_like(depth_buf)  # If all values are the same
+    return normalized.astype(np.uint8)
 
-    normalized_depth = cv2.normalize(depth_map, None, 0, 255, cv2.NORM_MINMAX)
-    normalized_depth = np.uint8(normalized_depth)
+def capture_tof_data(filename, processing_path, local_path):
+    camera_index = 1
+    global capturing_image
+    capturing_image = True
+    global default_cam_capture
 
-    threading.Thread(target=add_depth_chunk_with_pixel_data, args=(filename, processing_path, local_path, normalized_depth)).start()
+    show_loading_overlay()
+
+    if default_cam_capture.isOpened():
+        default_cam_capture.release()
+    
+    # Start Arducam TOF data capture
+    print("Arducam Depth Camera Depth Map Capture.")
+    print("  SDK version:", ac.__version__)
+
+    cam = ac.ArducamCamera()
+    ret = cam.open(ac.Connection.CSI, 0)
+    ret = cam.start(ac.FrameType.DEPTH)
+
+    frame = cam.requestFrame(2000)
+    depth_buf = frame.depth_data
+    cam.releaseFrame(frame)
+    cam.stop()
+    cam.close()
+
+    capturing_image = False
+    default_cam_capture = cv2.VideoCapture(DEFAULT_CAM_IDX)
+    update_frame()
+
+    if overlay:
+        overlay.destroy()
+
+    # depth buf contains the depth map data to be normalized and converted to a method which can be saved
+    depth_map = normalize_depth(depth_buf)
+
+    # Rotate depth map 180 degrees
+    depth_map = np.rot90(depth_map, 2)
+    
+    # Resize depth map while preserving aspect ratio with padding
+    target_resolution = (1280, 800)
+    depth_array = resize_with_padding(depth_map, *target_resolution)
+
+    add_depth_chunk_with_pixel_data(filename, processing_path, local_path, depth_array)
 
 
 def add_depth_chunk_with_pixel_data(filename, processing_path, local_path, depth_array):
-    right_image_path = f"{processing_path}/{filename}_right.png"
-    left_image_path = f"{processing_path}/{filename}_left.png"
-
-    output_image = f"{local_path}/{filename}.png"
+    processing_image_path = f"{processing_path}/{filename}"
+    output_image = f"{local_path}/{filename}"
 
     # Read the original PNG file
-    with open(right_image_path, "rb") as f:
+    with open(processing_image_path, "rb") as f:
         png_data = f.read()
     
     # Validate PNG file (must start with PNG signature)
@@ -155,7 +172,7 @@ def add_depth_chunk_with_pixel_data(filename, processing_path, local_path, depth
         raise ValueError("Not a valid PNG file")
     
     # Validate depth array dimensions
-    img = Image.open(right_image_path)
+    img = Image.open(processing_image_path)
     if depth_array.shape != (img.height, img.width):
         raise ValueError("Depth array dimensions must match the image dimensions")
     
@@ -189,8 +206,7 @@ def add_depth_chunk_with_pixel_data(filename, processing_path, local_path, depth
     # sign_png(output_image)
     # print("DONE SIGNING")
 
-    os.remove(left_image_path)
-    os.remove(right_image_path)
+    os.remove(processing_image_path)
 
 
 def save_current_frame(event=None):
@@ -199,11 +215,16 @@ def save_current_frame(event=None):
     processing_path = "gallery/need_processing"
 
     print("Saving image")
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"frame_{timestamp}"
-
-    # 🚀 Start the capture process in a new thread
-    threading.Thread(target=capture_picture, args=(filename, processing_path, local_path)).start()
+    global current_frame
+    if current_frame is not None:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"frame_{timestamp}.png"
+        cv2.imwrite(f"{processing_path}/{filename}", current_frame)
+        print(f"Saved current frame as {filename}")
+        # 🚀 Start the capture process in a new thread
+        threading.Thread(target=capture_tof_data, args=(filename, processing_path, local_path)).start()
+    else:
+        print("No frame to save.")
 
 
 def update_frame():
@@ -214,7 +235,7 @@ def update_frame():
         return
     
     if not default_cam_capture.isOpened():
-        default_cam_capture = cv2.VideoCapture(0)
+        default_cam_capture = cv2.VideoCapture(DEFAULT_CAM_IDX)
 
     ret, frame = default_cam_capture.read()
     if ret:
@@ -274,8 +295,10 @@ root.bind("<Return>", toggle_gallery)  # Press "<Return>" to switch to the galle
 # GPIO SETUP #
 GPIO.setmode(GPIO.BCM)
 
+# Set Power Pin for Buttons
 GPIO.setup(21, GPIO.OUT)
 GPIO.output(21, GPIO.HIGH)
+# Set input for all buttons
 GPIO.setup(19, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 GPIO.setup(16, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 GPIO.setup(26, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
@@ -287,25 +310,32 @@ def click_picture(channel):
     root.event_generate("s")
 
 def click_gallery(channel):
+    print("GAL")
     root.event_generate("<Return>")
 
 def click_19(channel):
+    print("RIGHT")
     root.event_generate("<Right>")
 
 def click_16(channel):
+    print("DOWN")
     root.event_generate("<Down>")
 
 def click_26(channel):
+    print("UP")
     root.event_generate("<Up>")
 
 def click_20(channel):
+    print("MIDDLE")
     root.event_generate("<Return>")
 
 def click_13(channel):
+    print("LEFT")
     root.event_generate("<Left>")
 
 def click_12(channel):
-    root.event_generate("s")
+    print("TAKE PIC")
+    # root.event_generate("s")
 
 
 GPIO.add_event_detect(12, GPIO.FALLING, callback=click_12, bouncetime=200)
@@ -317,7 +347,7 @@ GPIO.add_event_detect(20, GPIO.FALLING, callback=click_20, bouncetime=200)
 
 
 # Initialize OpenCV video capture
-default_cam_capture = cv2.VideoCapture(0)
+default_cam_capture = cv2.VideoCapture(DEFAULT_CAM_IDX)
 
 # Start video updates
 update_frame()
