@@ -109,6 +109,8 @@ def main():
 
     while True:
         frame = cam.requestFrame(2000)
+        print("R VALUE", r)
+
         if frame is not None and isinstance(frame, ac.DepthData):
             depth_buf = frame.depth_data
             confidence_buf = frame.confidence_data

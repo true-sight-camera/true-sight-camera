@@ -75,34 +75,36 @@ def show_loading_overlay():
 import cv2
 import numpy as np
 
+def old_resize_with_padding(image, target_width, target_height):
+    h, w = image.shape[:2]
+    scale = min(target_width / w, target_height / h)
+    new_w = int(w * scale)
+    new_h = int(h * scale)
+    resized = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
+    
+    pad_x = (target_width - new_w) // 2
+    pad_y = (target_height - new_h) // 2
+    
+    padded = cv2.copyMakeBorder(resized, pad_y, pad_y, pad_x, pad_x, cv2.BORDER_CONSTANT, value=(255, 255, 255))
+    return padded
+
 def resize_with_padding(image, target_width, target_height):
     h, w = image.shape[:2]
 
-    # Crop if larger than target
-    if w > target_width or h > target_height:
-        aspect_ratio_img = w / h
-        aspect_ratio_target = target_width / target_height
+    # Resize while maintaining aspect ratio
+    scale = target_width / w
+    new_w = target_width
+    new_h = int(h * scale)
+    resized = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
-        if aspect_ratio_img > aspect_ratio_target:
-            new_w = target_width
-            new_h = int(target_width / aspect_ratio_img)
-        else:
-            new_h = target_height
-            new_w = int(target_height * aspect_ratio_img)
+    # Crop from the top and bottom if necessary
+    if new_h > target_height:
+        crop_y = (new_h - target_height) // 2
+        cropped = resized[crop_y:crop_y + target_height, :]
+    else:
+        cropped = resized
 
-        image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
-
-    # Padding if smaller
-    h, w = image.shape[:2]
-    pad_x = (target_width - w) // 2
-    pad_y = (target_height - h) // 2
-
-    padded = cv2.copyMakeBorder(
-        image, pad_y, target_height - h - pad_y, pad_x, target_width - w - pad_x,
-        cv2.BORDER_CONSTANT, value=(255, 255, 255)
-    )
-
-    return padded
+    return cropped
 
 def normalize_depth(depth_buf):
     depth_min = np.min(depth_buf)
@@ -114,6 +116,9 @@ def normalize_depth(depth_buf):
     return normalized.astype(np.uint8)
 
 def capture_tof_data(filename, processing_path, local_path):
+    print("Arducam Depth Camera Depth Map Capture.")
+    print("  SDK version:", ac.__version__)
+    
     camera_index = 1
     global capturing_image
     capturing_image = True
@@ -125,15 +130,43 @@ def capture_tof_data(filename, processing_path, local_path):
         default_cam_capture.release()
     
     # Start Arducam TOF data capture
-    print("Arducam Depth Camera Depth Map Capture.")
-    print("  SDK version:", ac.__version__)
-
     cam = ac.ArducamCamera()
     ret = cam.open(ac.Connection.CSI, 0)
+    if ret != 0:
+        print("Failed to open camera. Error code:", ret)
+        return
     ret = cam.start(ac.FrameType.DEPTH)
+    if ret != 0:
+        print("Failed to start camera. Error code:", ret)
+        cam.close()
+        return
 
+    ### ADDITION START
+    r = cam.getControl(ac.Control.RANGE)
+    print("R VALUE", r)
     frame = cam.requestFrame(2000)
+    while frame is None:
+        frame = cam.requestFrame(2000)
+
     depth_buf = frame.depth_data
+    confidence_buf = frame.confidence_data
+    result_image = (depth_buf * (255.0 / r)).astype(np.uint8)
+    result_image = cv2.applyColorMap(result_image, cv2.COLORMAP_RAINBOW)
+    result_image = np.nan_to_num(result_image)
+    result_image[confidence_buf < 30] = (0, 0, 0)
+    cv2.normalize(confidence_buf, confidence_buf, 1, 0, cv2.NORM_MINMAX)
+
+    cv2.imshow("preview_confidence", confidence_buf)
+    cv2.imshow("preview", result_image)
+
+    # cv2.rectangle(result_image, followRect.rect, white_color, 1)
+    # if not selectRect.empty:
+    #     cv2.rectangle(result_image, selectRect.rect, black_color, 2)
+    #     print("select Rect distance:", np.mean(depth_buf[selectRect.slice]))
+
+    cam.releaseFrame(frame)
+    ### ADDITION END
+
     cam.releaseFrame(frame)
     cam.stop()
     cam.close()
@@ -289,61 +322,82 @@ def toggle_gallery(event=None):
 
 gallery = Gallery(root, video_label, update_frame, toggle_gallery)
 
-root.bind("<Return>", toggle_gallery)  # Press "<Return>" to switch to the gallery
+root.bind("g", toggle_gallery)  # Press "<Return>" to switch to the gallery
 
 
 # GPIO SETUP #
 GPIO.setmode(GPIO.BCM)
+#Pin Layout
+#No. - Color - Use Case
+#21 - Red - Power
+#20 - Brown - Power
+#16 - Black - Capture
+#12 - Orange - Gallery
+#26 - Green - Down
+#19 - Blue - Enter
+#13 - Purple - Right
+#6 - Grey - Left
+#5 - White - Up
+
+PIN_POWER1 = 21
+PIN_POWER2 = 20
+PIN_CAPTURE = 16
+PIN_GALLERY = 12
+PIN_ENTER = 19
+PIN_UP = 5
+PIN_RIGHT = 6
+PIN_LEFT = 13
+PIN_DOWN = 26
 
 # Set Power Pin for Buttons
-GPIO.setup(21, GPIO.OUT)
-GPIO.output(21, GPIO.HIGH)
+GPIO.setup(PIN_POWER1, GPIO.OUT)
+GPIO.output(PIN_POWER1, GPIO.HIGH)
+GPIO.setup(PIN_POWER2, GPIO.OUT)
+GPIO.output(PIN_POWER2, GPIO.HIGH)
 # Set input for all buttons
-GPIO.setup(19, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-GPIO.setup(16, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-GPIO.setup(26, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-GPIO.setup(20, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-GPIO.setup(13, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-GPIO.setup(12, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+GPIO.setup(PIN_CAPTURE, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+GPIO.setup(PIN_GALLERY, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+GPIO.setup(PIN_ENTER, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+GPIO.setup(PIN_UP, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+GPIO.setup(PIN_RIGHT, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+GPIO.setup(PIN_LEFT, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+GPIO.setup(PIN_DOWN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
-def click_picture(channel):
+def click_capture(channel):
+    print("clicked capture")
     root.event_generate("s")
 
 def click_gallery(channel):
-    print("GAL")
+    print("clicked gallery")
+    root.event_generate("g")
+
+def click_enter(channel):
+    print("clicked enter")
     root.event_generate("<Return>")
 
-def click_19(channel):
-    print("RIGHT")
-    root.event_generate("<Right>")
-
-def click_16(channel):
-    print("DOWN")
-    root.event_generate("<Down>")
-
-def click_26(channel):
-    print("UP")
+def click_up(channel):
+    print("clicked up")
     root.event_generate("<Up>")
 
-def click_20(channel):
-    print("MIDDLE")
-    root.event_generate("<Return>")
+def click_right(channel):
+    print("clicked right")
+    root.event_generate("<Right>")
 
-def click_13(channel):
-    print("LEFT")
+def click_left(channel):
+    print("clicked left")
     root.event_generate("<Left>")
 
-def click_12(channel):
-    print("TAKE PIC")
-    # root.event_generate("s")
+def click_down(channel):
+    print("clicked down")
+    root.event_generate("<Down>")
 
-
-GPIO.add_event_detect(12, GPIO.FALLING, callback=click_12, bouncetime=200)
-GPIO.add_event_detect(13, GPIO.FALLING, callback=click_13, bouncetime=200)
-GPIO.add_event_detect(19, GPIO.FALLING, callback=click_19, bouncetime=200)
-GPIO.add_event_detect(16, GPIO.FALLING, callback=click_16, bouncetime=200)
-GPIO.add_event_detect(26, GPIO.FALLING, callback=click_26, bouncetime=200)
-GPIO.add_event_detect(20, GPIO.FALLING, callback=click_20, bouncetime=200)
+GPIO.add_event_detect(PIN_CAPTURE, GPIO.FALLING, callback=click_capture, bouncetime=200)
+GPIO.add_event_detect(PIN_GALLERY, GPIO.FALLING, callback=click_gallery, bouncetime=200)
+GPIO.add_event_detect(PIN_ENTER, GPIO.FALLING, callback=click_enter, bouncetime=200)
+GPIO.add_event_detect(PIN_UP, GPIO.FALLING, callback=click_up, bouncetime=200)
+GPIO.add_event_detect(PIN_LEFT, GPIO.FALLING, callback=click_left, bouncetime=200)
+GPIO.add_event_detect(PIN_RIGHT, GPIO.FALLING, callback=click_right, bouncetime=200)
+GPIO.add_event_detect(PIN_DOWN, GPIO.FALLING, callback=click_down, bouncetime=200)
 
 
 # Initialize OpenCV video capture

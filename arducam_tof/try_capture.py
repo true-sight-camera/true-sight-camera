@@ -49,17 +49,16 @@ def main():
         depth_map = normalize_depth(depth_buf)
         print(depth_map[1][1])
         
-        # Resize depth map while preserving aspect ratio with padding
-        target_resolution = (1280, 800)
-        padded_depth_map = resize_with_padding(depth_map, *target_resolution)
-        print(padded_depth_map[1][1])
+        # # Resize depth map while preserving aspect ratio with padding
+        # target_resolution = (1280, 800)
+        # padded_depth_map = resize_with_padding(depth_map, *target_resolution)
+        # print(padded_depth_map[1][1])
         
         # Apply color map after resizing
-        color_depth_map = cv2.applyColorMap(padded_depth_map, cv2.COLORMAP_RAINBOW)
+        color_depth_map = cv2.applyColorMap(depth_map, cv2.COLORMAP_RAINBOW)
         
         filename = "depth_map.png"
         cv2.imwrite(filename, color_depth_map)
-        print(f"Depth map saved as {filename} with resolution {target_resolution}")
         
         cam.releaseFrame(frame)
     

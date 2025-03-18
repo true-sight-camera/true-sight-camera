@@ -11,7 +11,7 @@ left_image_path = "../test_images/left_image_3.png"
 right_image_path = "../test_images/right_image_3.png"
 output_image = "../test_images/image_with_depth_2.png"
 
-camera_index = 0;
+camera_index = 1;
 
 def capture_picture():
     """
@@ -198,6 +198,6 @@ def add_depth_chunk_with_pixel_data(depth_array):
 
 if __name__ == "__main__":
     # this is full process to add depth array to pic
-    # capture_picture()
+    capture_picture()
     depth_map = create_depth_map()
     add_depth_chunk_with_pixel_data(depth_array=depth_map)
