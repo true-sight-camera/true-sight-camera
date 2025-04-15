@@ -61,29 +61,35 @@ def send_image_data(image_hash, image_signature, image_data):
 
     headers = {}
 
-    # print(payload)
-    # session = requests.Session()
-    # session.mount('https://', SSLAdapter())
-    # response = session.post(url, files=payload, headers=headers)
-
     response = requests.post(url, files=payload, headers=headers)
 
     print(response.status_code)
     print(response.text)
 
     # Upload image itself
-    upload_image(image_data)
+    upload_image(image_hash, image_data, username_signature)
 
 # Endpoint URL (adjust host/port as needed)
 
-def upload_image(image_data):
+def upload_image(image_hash, image_data, username_signature):
     """
     Reads the file at file_path in binary mode and uploads it
     to the Flask endpoint as the request body.
     """
-    url = f"{BASE_URL}/api/store_image"
+    url = f"{BASE_URL}/api/image-store/pi"
 
-    response = requests.post(url, data=image_data)
+    print(username_signature)
+
+    files = {
+        "file": ('SOME PLACEHOLDER IMAGE', image_data, 'image/png')
+    }
+
+    data = {
+        "encrypted_username": (None, hexlify(username_signature).decode()),
+        "image_hash": (None, image_hash.hex()),
+    }
+
+    response = requests.post(url, files=files, data=data)
     
     if response.status_code == 200:
         print(f"Uploaded image successfully.")

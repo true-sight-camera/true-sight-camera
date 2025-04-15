@@ -116,12 +116,10 @@ def normalize_depth(depth_buf):
     return normalized.astype(np.uint8)
 
 def capture_tof_data(filename, processing_path, local_path):
-    print("Arducam Depth Camera Depth Map Capture.")
-    print("  SDK version:", ac.__version__)
-    
     camera_index = 1
     global capturing_image
     capturing_image = True
+    root.unbind("s")
     global default_cam_capture
 
     show_loading_overlay()
@@ -156,8 +154,8 @@ def capture_tof_data(filename, processing_path, local_path):
     result_image[confidence_buf < 30] = (0, 0, 0)
     cv2.normalize(confidence_buf, confidence_buf, 1, 0, cv2.NORM_MINMAX)
 
-    cv2.imshow("preview_confidence", confidence_buf)
-    cv2.imshow("preview", result_image)
+    # cv2.imshow("preview_confidence", confidence_buf)
+    # cv2.imshow("preview", result_image)
 
     # cv2.rectangle(result_image, followRect.rect, white_color, 1)
     # if not selectRect.empty:
@@ -177,6 +175,8 @@ def capture_tof_data(filename, processing_path, local_path):
 
     if overlay:
         overlay.destroy()
+    
+    root.bind("s", save_current_frame)  # Capture image
 
     # depth buf contains the depth map data to be normalized and converted to a method which can be saved
     depth_map = normalize_depth(depth_buf)
@@ -310,7 +310,8 @@ def toggle_gallery(event=None):
         gallery_active = False
         
         # ✅ Rebind video feed controls
-        root.bind("<Return>", toggle_gallery)  # Open gallery
+        root.bind("g", toggle_gallery)  # Press "g" to switch to the gallery
+        # root.bind("<Return>", save_current_frame)
         root.bind("s", save_current_frame)  # Capture image
         
         # ✅ Restart video feed (fixes white screen issue)
@@ -322,8 +323,8 @@ def toggle_gallery(event=None):
 
 gallery = Gallery(root, video_label, update_frame, toggle_gallery)
 
-root.bind("g", toggle_gallery)  # Press "<Return>" to switch to the gallery
-
+root.bind("g", toggle_gallery)  # Press "g" to switch to the gallery
+# root.bind("<Return>", save_current_frame)
 
 # GPIO SETUP #
 GPIO.setmode(GPIO.BCM)
@@ -364,31 +365,24 @@ GPIO.setup(PIN_LEFT, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 GPIO.setup(PIN_DOWN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
 def click_capture(channel):
-    print("clicked capture")
     root.event_generate("s")
 
 def click_gallery(channel):
-    print("clicked gallery")
     root.event_generate("g")
 
 def click_enter(channel):
-    print("clicked enter")
     root.event_generate("<Return>")
 
 def click_up(channel):
-    print("clicked up")
     root.event_generate("<Up>")
 
 def click_right(channel):
-    print("clicked right")
     root.event_generate("<Right>")
 
 def click_left(channel):
-    print("clicked left")
     root.event_generate("<Left>")
 
 def click_down(channel):
-    print("clicked down")
     root.event_generate("<Down>")
 
 GPIO.add_event_detect(PIN_CAPTURE, GPIO.FALLING, callback=click_capture, bouncetime=200)

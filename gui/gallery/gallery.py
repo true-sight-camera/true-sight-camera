@@ -136,21 +136,21 @@ class Gallery:
         """Sets focus on the specified button and highlights it."""
         for idx, button in enumerate(self.buttons):
             if idx == 0:
-                button.config(bg="red", fg="white") # X button
-                continue
+                button.config(bg="red", fg="white")  # Keep exit button red
+            else:
+                button.config(bg="white", fg="black", bd=2, padx=5, pady=5)  # Reset all buttons properly
 
-            button.config(bg="white", fg="black")  # Reset all buttons
-
+        # Highlight the focused button
         self.buttons[index].config(
             bg="royalblue",
             fg="white",
-            bd=6,
+            bd=6,  # Border thickness
             padx=10,
             pady=10
         )
         self.buttons[index].focus_set()  # Set keyboard focus
-
         self.focus_index = index
+
 
     def press_enter(self):
         """Presses the currently focused button."""
@@ -174,7 +174,8 @@ class Gallery:
         self.root.bind("<Left>", lambda event: self.navigate_buttons(-1))  # Move left
         self.root.bind("<Up>", lambda event: self.navigate_buttons(-2))  # Move up (Exit button)
         self.root.bind("<Down>", lambda event: self.navigate_buttons(2))  # Move down (Image buttons)
-        self.root.unbind("<Return")
+        self.root.unbind("<Return>")
+        self.root.unbind("g")
         self.root.bind("<Return>", lambda event: self.press_enter())  # Activate button
         self.focus_index = 0
         self.set_focus(0)  # Start focus on Exit button
@@ -189,7 +190,7 @@ class Gallery:
         if self.video_label:
             self.video_label.pack(fill="both", expand=True)
 
-        # ✅ Unbind navigation keys to avoid interference
+        # ✅ Unbind navigation keys to avoid interferences
         self.root.unbind("<Right>")
         self.root.unbind("<Left>")
         self.root.unbind("<Up>")

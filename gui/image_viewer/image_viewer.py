@@ -104,6 +104,62 @@ class Image_Viewer:
         self.focus_index = [0, 0]
         self.set_focus(self.focus_index)
 
+    def store_bindings(self):
+        """Stores current key bindings to restore later."""
+        self.previous_bindings = {
+            "<Right>": self.root.bind("<Right>"),
+            "<Left>": self.root.bind("<Left>"),
+            "<Up>": self.root.bind("<Up>"),
+            "<Down>": self.root.bind("<Down>"),
+            "<Return>": self.root.bind("<Return>")
+        }
+
+    def restore_bindings(self):
+        """Restores key bindings after closing the modal."""
+        for key, func in self.previous_bindings.items():
+            if func:
+                self.root.bind(key, func)
+
+    def show_modal(self, message):
+        """Displays an in-window overlay with a confirmation message and a highlighted OK button."""
+        if hasattr(self, "modal_frame") and self.modal_frame.winfo_exists():
+            return  # Prevent duplicate modals
+
+        # Create a semi-transparent overlay
+        self.modal_frame = tk.Frame(self.viewer_frame, bg="black", bd=2)
+        self.modal_frame.place(relx=0.5, rely=0.5, anchor="center", width=300, height=120)
+
+        # Label to display the message
+        label = tk.Label(self.modal_frame, text=message, font=("Arial", 12, "bold"), fg="white", bg="black")
+        label.pack(pady=10)
+
+        # ✅ OK button with blue highlight
+        self.ok_button = tk.Button(self.modal_frame, text="OK", font=("Arial", 12, "bold"),
+                                bg="royalblue", fg="white",
+                                command=self.close_modal)
+        self.ok_button.pack(pady=5)
+
+        # Store previous navigation bindings
+        self.store_bindings()
+
+        # Disable all other navigation bindings
+        self.root.unbind("<Right>")
+        self.root.unbind("<Left>")
+        self.root.unbind("<Up>")
+        self.root.unbind("<Down>")
+        self.root.unbind("<Return>")
+
+        # ✅ Ensure OK button is focused and can be pressed with Enter
+        self.root.bind("<Return>", lambda event: self.ok_button.invoke())
+        self.root.after(50, lambda: self.ok_button.focus_force())
+
+    def close_modal(self):
+        """Closes the overlay modal and restores navigation bindings."""
+        if hasattr(self, "modal_frame") and self.modal_frame.winfo_exists():
+            self.modal_frame.destroy()
+
+        self.restore_bindings()
+
     def display_image(self):
         """Display the current image while preserving aspect ratio."""
         img_path = self.image_paths[self.current_index]
@@ -234,10 +290,25 @@ class Image_Viewer:
         img_path = self.image_paths[self.current_index]
         try:
             sign_png(img_path)
+
+            self.show_modal("Image uploaded successfully!")
+
+            os.remove(img_path)  # Delete the file
+            print(f"Deleted: {img_path}")
+
+            # Remove from the list
+            del self.image_paths[self.current_index]
+
+            if self.image_paths:
+                # If images remain, show the next or previous one
+                if self.current_index >= len(self.image_paths):  # If last image was deleted
+                    self.current_index -= 1  # Move to previous
+                self.display_image()
+            else:
+                # No images left → Show "No Images Left" message
+                self.show_no_images_message()
         except Exception as e:
             print(f"Error signing image {img_path}: {e}")
-        
-        self.delete_image()
 
     def delete_image(self):
         """Deletes the current image and moves to the next one or shows a message if none remain."""
@@ -253,6 +324,8 @@ class Image_Viewer:
             # Remove from the list
             del self.image_paths[self.current_index]
 
+            self.show_modal("Image deleted successfully!")
+
             if self.image_paths:
                 # If images remain, show the next or previous one
                 if self.current_index >= len(self.image_paths):  # If last image was deleted
@@ -264,6 +337,7 @@ class Image_Viewer:
 
         except Exception as e:
             print(f"Error deleting {img_path}: {e}")
+
     
     def return_to_gallery(self):
         """Closes the viewer and returns to the gallery."""
